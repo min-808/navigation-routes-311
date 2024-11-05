@@ -1,5 +1,5 @@
 import networkx as nx
-from collections import deque
+import heapq
 
 # Create a directed graph representing the sea of islands
 sea_of_islands = nx.DiGraph()
@@ -30,61 +30,56 @@ sea_of_islands.add_edge("Samoa", "Aotearoa", travel_time=12)
 sea_of_islands.add_edge("Samoa", "Hawaii", travel_time=10)
 sea_of_islands.add_edge("Samoa", "Tahiti", travel_time=10)
 
+# Dijkstra's algorithm to find the shortest route with unique experiences
 def find_shortest_route(graph, start_island):
-    # Precompute the total experience time for each island
+    # Precompute experience times for each island
     experience_times = {node: sum(data.get("experiences", {}).values()) for node, data in graph.nodes(data=True)}
     islands = list(graph.nodes)
     n = len(islands)
     best_time = float('inf')
     best_route = None
 
-    # Use a queue for BFS traversal
-    queue = deque()
-    # Each queue item: (current_node, visited_islands_set, total_time, route_list, visited_experiences_set)
+    # Initialize the priority queue
+    priority_queue = []
     initial_time = experience_times[start_island]
-    queue.append((start_island, set([start_island]), initial_time, [start_island], set([start_island])))
+    heapq.heappush(priority_queue, (initial_time, start_island, set([start_island]), [start_island], set([start_island])))
 
-    while queue:
-        current_node, visited_islands, total_time, route, visited_experiences = queue.popleft()
+    while priority_queue:
+        total_time, current_node, visited_islands, route, visited_experiences = heapq.heappop(priority_queue)
 
-        # If all islands have been visited, check if this route is the best
+        # If all islands are visited, update the best time if this path is shorter
         if len(visited_islands) == n:
             if total_time < best_time:
                 best_time = total_time
                 best_route = route
             continue
 
-        # Explore all possible next islands
+        # Explore all neighboring islands
         for neighbor in graph.successors(current_node):
             travel_time = graph[current_node][neighbor]['travel_time']
             new_total_time = total_time + travel_time
 
-            # Add experience time only if the experiences at the neighbor haven't been done yet
+            # Add experience time if and only if this island’s experiences are new
             if neighbor not in visited_experiences:
                 new_total_time += experience_times[neighbor]
                 new_visited_experiences = visited_experiences | {neighbor}
             else:
                 new_visited_experiences = visited_experiences.copy()
 
-            # Revisit islands if necessary to reach unvisited ones
+            # Update the visited islands and route
             new_visited_islands = visited_islands | {neighbor}
             new_route = route + [neighbor]
 
-            # Prune paths that are already longer than the best found
-            if new_total_time >= best_time:
-                continue
+            # Only add to the queue if this path is shorter than the best time found
+            if new_total_time < best_time:
+                heapq.heappush(priority_queue, (new_total_time, neighbor, new_visited_islands, new_route, new_visited_experiences))
 
-            queue.append((neighbor, new_visited_islands, new_total_time, new_route, new_visited_experiences))
+    return best_route, best_time if best_route else ("No valid route found",)
 
-    if best_route is not None:
-        return best_route, best_time
-    else:
-        return [], "No valid route found"
-
-# Example usage
+# ***Testing***
 if __name__ == "__main__":
     # Starting island
-    start_island = "Samoa"
+    start_island = "Tahiti"
 
     # Find the shortest route
     route, total_time = find_shortest_route(sea_of_islands, start_island)
@@ -93,4 +88,4 @@ if __name__ == "__main__":
     if route:
         print(f"The best route starting from {start_island} is {route} with a total time of {total_time}")
     else:
-        print(f"{total_time}")
+        print(total_time)
