@@ -40,7 +40,7 @@ print('\n')
 #     print(route)
 
 # feel free to use this graph to test out your functions
-def distribute_resource(graph, source_island, resource, quantity, canoe_capacity):
+def distribute_resource(graph, source_island, resource, quantity, canoe_capacity, canoe_count):
     """
     Distributes a specified quantity of a resource from a source island to other islands in a graph.
 
@@ -50,28 +50,29 @@ def distribute_resource(graph, source_island, resource, quantity, canoe_capacity
     resource (str): The type of resource to be distributed.
     quantity (float): The total quantity of the resource to be distributed.
     canoe_capacity (float): The maximum capacity of the canoe used for transporting the resource.
+    canoe_count (int): The number of canoes available.
 
     Returns:
     None
 
     The function calculates the target resource level for each island based on its population and 
     distributes the resource from the source island to other islands using a priority queue to 
-    ensure the shortest travel time. It updates the resource levels of the islands as it traverses 
+    ensure the shortest travel time. It updates the resource levels of the source_island as it traverses 
     the graph.
     """
     # Calculate the total population to determine the even distribution amount
     total_population = sum(graph.nodes[island]['population'] for island in graph.nodes())
-    target_per_capita_resource = quantity / total_population
+    resource_per_person = quantity / total_population
 
     # Set target resource levels for each island based on population
     target_resource = {
-        island: target_per_capita_resource * graph.nodes[island]['population']
+        island: resource_per_person * graph.nodes[island]['population']
         for island in graph.nodes()
     }
     
     # Priority queue for processing islands in order of shortest travel time
     queue = PriorityQueue()
-    queue.put((0, source_island))  # (travel_time, island)
+    queue.put((0, source_island))
     
     # Track visited islands to avoid redundant processing
     visited = set()
@@ -89,7 +90,8 @@ def distribute_resource(graph, source_island, resource, quantity, canoe_capacity
         
         # Determine the transfer amount, considering canoe capacity and fractional loading
         if needed_quantity > 0:
-            transfer_quantity = min(needed_quantity, canoe_capacity)
+            transfer_quantity = min(needed_quantity, canoe_capacity * canoe_count)
+            transfer_quantity = round(transfer_quantity)  # Round to the nearest whole number
             graph.nodes[current_island]['resources'][resource] = current_quantity + transfer_quantity
             quantity -= transfer_quantity
             graph.nodes[source_island]['resources'][resource] -= transfer_quantity
@@ -99,8 +101,6 @@ def distribute_resource(graph, source_island, resource, quantity, canoe_capacity
             travel_time = graph.edges[current_island, neighbor]['travel_time']
             queue.put((current_time + travel_time, neighbor))
             
-distribute_resource(sea_of_islands, "Hawaii", "kahelelani_shells", 120, canoe_capacity=120)
-
 print("Resource distribution AFTER:")
 for island in sea_of_islands.nodes(data=True):
     print(island)
